@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CRUD · API de Abastecimiento SIS</title>
+    <style>
+        :root { color-scheme: light; --navy: #102b53; --blue: #1264ce; --muted: #52647c; --border: #d4dfeb; --red: #a52828; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--navy); background: #eef3f8; font: 16px/1.5 system-ui, sans-serif; }
+        header { background: white; border-bottom: 4px solid var(--blue); }
+        nav, main { max-width: 1320px; margin: auto; padding: 22px 28px; }
+        nav { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+        .brand { font-size: 22px; font-weight: 700; }
+        a { color: #1055ad; text-underline-offset: 3px; }
+        h1 { font-size: clamp(26px, 3vw, 36px); margin: 0 0 6px; letter-spacing: -.6px; }
+        h2 { font-size: 21px; margin: 0 0 18px; }
+        p { margin: 0 0 16px; }
+        .muted, .hint { color: var(--muted); }
+        .hint { font-size: 14px; margin-top: 6px; }
+        .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; margin: 24px 0; align-items: start; }
+        .card { background: white; padding: 24px; border: 1px solid var(--border); border-radius: 10px; min-width: 0; }
+        label { display: block; font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+        input, select, button { font: inherit; min-height: 46px; border-radius: 6px; }
+        input, select { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid #b7c6d9; color: var(--navy); background: white; }
+        button { padding: 10px 20px; border: 0; background: var(--blue); color: white; font-weight: 650; cursor: pointer; }
+        button:hover { background: #0b50ad; }
+        button:disabled { background: #526c90; cursor: wait; }
+        button.danger { background: var(--red); }
+        :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+        .field { margin-bottom: 16px; }
+        .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+        fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+        legend { font-weight: 700; margin-bottom: 16px; }
+        .route { padding: 12px 14px; background: #edf3f9; border-radius: 6px; overflow-wrap: anywhere; margin-bottom: 18px; }
+        .route code { font-size: 15px; }
+        .check { display: flex; align-items: flex-start; gap: 12px; font-weight: 400; }
+        .check input { width: 20px; min-height: 20px; flex: 0 0 20px; margin-top: 3px; }
+        .delete-note { padding: 14px; border: 1px solid #e9b8b8; border-radius: 6px; background: #fff5f5; color: #7e2020; margin-bottom: 18px; }
+        pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 520px; overflow-y: auto; padding: 16px; border-radius: 6px; background: #f3f6fa; color: #183557; font-size: 14px; line-height: 1.6; }
+        #solicitud { max-height: 220px; margin-bottom: 20px; }
+        #estado { display: inline-block; background: #edf3f9; border-radius: 5px; padding: 5px 10px; font-weight: 700; margin-bottom: 12px; }
+        #estado.ok { background: #ecf9ee; color: #166534; }
+        #estado.error { background: #fff0f0; color: var(--red); }
+        #errores { color: var(--red); margin-bottom: 18px; padding: 12px; border: 1px solid #edc8c8; border-radius: 6px; }
+        .field-error { color: var(--red); font-size: 14px; margin: 5px 0 0; }
+        .links { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 18px 0; }
+        .table-scroll { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #edf3f9; }
+        td code { white-space: nowrap; }
+        details { margin-top: 18px; }
+        summary { cursor: pointer; font-weight: 600; padding: 10px 0; }
+        [hidden] { display: none !important; }
+        @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+        @media (max-width: 520px) { nav, main { padding: 18px 16px; } .card { padding: 18px; } .pair { grid-template-columns: minmax(0, 1fr); gap: 0; } .brand { font-size: 18px; } button { width: 100%; } }
+    </style>
+</head>
+<body>
+<header><nav aria-label="Principal"><span class="brand">SIS / API de abastecimiento</span><a href="/">Volver al portal</a></nav></header>
+<main>
+    <h1>Prueba las operaciones CRUD</h1>
+    <p class="muted">Crea, consulta, actualiza y elimina medicamentos y proveedores. Cada acción llama a la API real.</p>
+    <div class="links" aria-label="Consultas JSON directas">
+        <a href="/api/articulos" target="_blank" rel="noopener">Ver medicamentos en JSON</a>
+        <a href="/api/proveedores" target="_blank" rel="noopener">Ver proveedores en JSON</a>
+        <a href="/api/unidades-medida" target="_blank" rel="noopener">Ver unidades de medida</a>
+    </div>
+    <div class="layout">
+        <section class="card" aria-labelledby="titulo-peticion">
+            <h2 id="titulo-peticion">1. Configura la petición</h2>
+            <form id="crud-form">
+                <div id="errores" role="alert" tabindex="-1" hidden></div>
+                <div class="pair">
+                    <div class="field"><label for="recurso">Recurso</label><select id="recurso"><option value="articulos">Medicamentos</option><option value="proveedores">Proveedores</option></select></div>
+                    <div class="field"><label for="operacion">Operación</label><select id="operacion"><option value="listar">READ · Listar todos</option><option value="consultar">READ · Consultar por ID</option><option value="crear">CREATE · Crear</option><option value="actualizar">UPDATE · Actualizar</option><option value="eliminar">DELETE · Eliminar</option></select></div>
+                </div>
+                <div class="route" aria-live="polite"><code id="ruta">GET /api/articulos</code></div>
+                <div class="field" id="campo-id" hidden>
+                    <label for="idRegistro">ID del registro</label><input id="idRegistro" type="number" min="1" max="2147483647" step="1" placeholder="Ej. 101">
+                    <p class="hint" id="ayuda-id">Para crear, utiliza un ID nuevo. Para consultar, actualizar o eliminar, indica uno existente.</p>
+                </div>
+                <fieldset id="datos-articulo" hidden disabled>
+                    <legend>Datos del medicamento</legend>
+                    <div class="field"><label for="descripcion">Descripción</label><input id="descripcion" maxlength="150" required placeholder="Ej. Medicamento de demostración"></div>
+                    <div class="pair">
+                        <div class="field"><label for="precio">Precio unitario (S/)</label><input id="precio" type="number" min="0" max="9999999.99" step="0.01" required placeholder="0.00"></div>
+                        <div class="field"><label for="idUnidad">ID de unidad de medida</label><input id="idUnidad" type="number" min="1" max="2147483647" step="1" required placeholder="Ej. 1 (Tableta)"></div>
+                    </div>
+                    <div class="field"><label for="idProveedor">ID del proveedor</label><input id="idProveedor" type="number" min="1" max="2147483647" step="1" required placeholder="Ej. 1"><p class="hint">La unidad y el proveedor deben existir. Puedes consultar sus IDs en los enlaces superiores.</p></div>
+                </fieldset>
+                <fieldset id="datos-proveedor" hidden disabled>
+                    <legend>Datos del proveedor</legend>
+                    <div class="field"><label for="nombre">Nombre</label><input id="nombre" maxlength="150" required placeholder="Ej. Proveedor de demostración"></div>
+                    <div class="field"><label for="ruc">RUC (11 dígitos)</label><input id="ruc" type="text" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" required placeholder="Ej. 20999999999"></div>
+                </fieldset>
+                <p class="hint" id="ayuda-editar" hidden>Para cargar datos existentes, elige «Consultar por ID» y ejecuta la consulta. Luego cambia a «Actualizar» y edita los campos.</p>
+                <div id="confirmacion" class="delete-note" hidden><label class="check" for="confirmar"><input id="confirmar" type="checkbox">Confirmo que quiero eliminar el registro indicado. Esta acción elimina sus datos.</label></div>
+                <button id="ejecutar" type="submit">Ejecutar GET</button>
+            </form>
+        </section>
+        <section class="card" aria-labelledby="titulo-respuesta">
+            <h2 id="titulo-respuesta">2. Revisa el resultado</h2>
+            <label for="solicitud">Petición enviada</label><pre id="solicitud">Todavía no se envió una petición.</pre>
+            <div id="estado" role="status">Esperando petición</div>
+            <pre id="respuesta" tabindex="0" aria-label="Respuesta JSON de la API">Aquí aparecerá la respuesta del servidor.</pre>
+        </section>
+    </div>
+    <section class="card" aria-labelledby="titulo-rutas">
+        <h2 id="titulo-rutas">Operaciones para mostrar en clase</h2>
+        <div class="table-scroll" role="region" aria-label="Rutas CRUD" tabindex="0"><table>
+            <thead><tr><th scope="col">CRUD</th><th scope="col">Método</th><th scope="col">Medicamentos</th><th scope="col">Proveedores</th></tr></thead>
+            <tbody>
+                <tr><td>Crear</td><td>POST</td><td><code>/api/articulos</code></td><td><code>/api/proveedores</code></td></tr>
+                <tr><td>Listar</td><td>GET</td><td><code>/api/articulos</code></td><td><code>/api/proveedores</code></td></tr>
+                <tr><td>Consultar uno</td><td>GET</td><td><code>/api/articulos/{id}</code></td><td><code>/api/proveedores/{id}</code></td></tr>
+                <tr><td>Actualizar</td><td>PUT</td><td><code>/api/articulos/{id}</code></td><td><code>/api/proveedores/{id}</code></td></tr>
+                <tr><td>Eliminar</td><td>DELETE</td><td><code>/api/articulos/{id}</code></td><td><code>/api/proveedores/{id}</code></td></tr>
+            </tbody>
+        </table></div>
+        <details><summary>Dónde están las funciones en el código</summary><p>En <code>controller/ArticuloRestController.java</code> y <code>controller/ProveedorRestController.java</code> encontrarás los métodos <code>listar</code>, <code>obtener</code>, <code>crear</code>, <code>actualizar</code> y <code>eliminar</code>, con sus anotaciones HTTP. La lógica y las transacciones están en <code>service/CrudService.java</code>.</p><p class="muted">Un proveedor con medicamentos asociados no se puede eliminar: la API devuelve 409. Los IDs los indica el usuario al crear. No se permite reutilizar un ID o RUC ya registrado.</p></details>
+    </section>
+</main>
+<script th:inline="none">
+    const $ = id => document.getElementById(id);
+    const methods = {listar: 'GET', consultar: 'GET', crear: 'POST', actualizar: 'PUT', eliminar: 'DELETE'};
+    const fields = ['descripcion', 'precio', 'idUnidad', 'idProveedor', 'nombre', 'ruc'];
+
+    function clearErrors() {
+        $('errores').hidden = true;
+        $('errores').replaceChildren();
+        document.querySelectorAll('.field-error').forEach(el => el.remove());
+        document.querySelectorAll('[aria-invalid]').forEach(el => { el.removeAttribute('aria-invalid'); el.removeAttribute('aria-describedby'); });
+    }
+
+    function showError(message, errors = {}) {
+        const summary = $('errores');
+        summary.replaceChildren(document.createTextNode(message));
+        const list = document.createElement('ul');
+        for (const [key, detail] of Object.entries(errors)) {
+            const id = key === 'idArticulo' || (key === 'idProveedor' && $('recurso').value === 'proveedores') ? 'idRegistro' : key;
+            const input = $(id);
+            if (!input) continue;
+            const item = document.createElement('li');
+            const link = document.createElement('a');
+            link.href = '#' + id;
+            link.textContent = `${input.labels?.[0]?.textContent || key}: ${detail}`;
+            item.append(link);
+            list.append(item);
+            const inline = document.createElement('p');
+            inline.className = 'field-error';
+            inline.id = 'error-' + id;
+            inline.textContent = detail;
+            input.after(inline);
+            input.setAttribute('aria-invalid', 'true');
+            input.setAttribute('aria-describedby', inline.id);
+        }
+        if (list.children.length) summary.append(list);
+        summary.hidden = false;
+        summary.focus();
+    }
+
+    function endpoint() {
+        const op = $('operacion').value;
+        return '/api/' + $('recurso').value + (['consultar', 'actualizar', 'eliminar'].includes(op) ? '/' + ($('idRegistro').value || '{id}') : '');
+    }
+
+    function updateForm() {
+        const op = $('operacion').value;
+        const write = op === 'crear' || op === 'actualizar';
+        $('campo-id').hidden = op === 'listar';
+        $('idRegistro').disabled = op === 'listar';
+        $('idRegistro').required = op !== 'listar';
+        for (const [id, resource] of [['datos-articulo', 'articulos'], ['datos-proveedor', 'proveedores']]) {
+            const active = write && $('recurso').value === resource;
+            $(id).hidden = !active;
+            $(id).disabled = !active;
+        }
+        $('ayuda-editar').hidden = op !== 'actualizar';
+        $('confirmacion').hidden = op !== 'eliminar';
+        $('confirmar').required = op === 'eliminar';
+        $('confirmar').disabled = op !== 'eliminar';
+        $('confirmar').checked = false;
+        $('ruta').textContent = methods[op] + ' ' + endpoint();
+        $('ejecutar').textContent = 'Ejecutar ' + methods[op];
+        $('ejecutar').classList.toggle('danger', op === 'eliminar');
+        clearErrors();
+    }
+
+    function requestBody() {
+        let body = $('recurso').value === 'articulos'
+            ? {descripcion: $('descripcion').value.trim(), precio: Number($('precio').value), idUnidad: Number($('idUnidad').value), idProveedor: Number($('idProveedor').value)}
+            : {ruc: $('ruc').value, nombre: $('nombre').value.trim()};
+        if ($('operacion').value === 'crear') body[$('recurso').value === 'articulos' ? 'idArticulo' : 'idProveedor'] = Number($('idRegistro').value);
+        return body;
+    }
+
+    $('recurso').addEventListener('change', () => {
+        $('idRegistro').value = '';
+        fields.forEach(id => $(id).value = '');
+        updateForm();
+    });
+    $('operacion').addEventListener('change', updateForm);
+    $('idRegistro').addEventListener('input', () => { $('ruta').textContent = methods[$('operacion').value] + ' ' + endpoint(); $('confirmar').checked = false; });
+
+    $('crud-form').addEventListener('submit', async e => {
+        e.preventDefault();
+        clearErrors();
+        const op = $('operacion').value;
+        const method = methods[op];
+        const url = endpoint();
+        const body = ['POST', 'PUT'].includes(method) ? requestBody() : undefined;
+        $('solicitud').textContent = `${method} ${url}` + (body ? '\nContent-Type: application/json\n\n' + JSON.stringify(body, null, 2) : '');
+        const controls = [...$('crud-form').querySelectorAll('button, input, select')].filter(el => !el.disabled && !el.closest('fieldset[disabled]'));
+        controls.forEach(el => el.disabled = true);
+        $('estado').className = '';
+        $('estado').textContent = 'Enviando petición…';
+        $('respuesta').setAttribute('aria-busy', 'true');
+        let data;
+        let failure;
+        try {
+            const response = await fetch(url, {method, headers: body ? {'Content-Type': 'application/json'} : {}, body: body ? JSON.stringify(body) : undefined});
+            const text = await response.text();
+            data = text ? JSON.parse(text) : null;
+            $('estado').textContent = `HTTP ${response.status} ${response.statusText}`;
+            $('estado').className = response.ok ? 'ok' : 'error';
+            $('respuesta').textContent = response.status === 204 ? 'Registro eliminado. El servidor respondió 204 sin cuerpo.' : JSON.stringify(data, null, 2);
+            if (!response.ok) failure = data?.detail || 'No se pudo completar la petición.';
+            if (response.ok && op === 'consultar' && data) {
+                if ($('recurso').value === 'articulos') {
+                    $('descripcion').value = data.descripcion;
+                    $('precio').value = data.precio;
+                    $('idUnidad').value = data.unidadMedida.idUnidad;
+                    $('idProveedor').value = data.proveedor.idProveedor;
+                } else { $('nombre').value = data.nombre; $('ruc').value = data.ruc; }
+            }
+        } catch (err) {
+            failure = 'No se pudo leer la respuesta. Comprueba que el servidor esté disponible e inténtalo de nuevo.';
+            $('estado').textContent = 'Error de conexión o respuesta';
+            $('estado').className = 'error';
+            $('respuesta').textContent = failure;
+        } finally {
+            controls.forEach(el => el.disabled = false);
+            $('respuesta').setAttribute('aria-busy', 'false');
+            $('confirmar').checked = false;
+        }
+        if (failure) showError(failure, data?.campos);
+    });
+    updateForm();
+</script>
+</body>
+</html>

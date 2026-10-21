@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Portal de Abastecimiento SIS</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --navy: #102b53;
+            --blue: #1264ce;
+            --blue-hover: #0b50ad;
+            --green: #166534;
+            --green-bg: #ecf9ee;
+            --background: #eef3f8;
+            --surface: #fff;
+            --muted: #52647c;
+            --border: #d4dfeb;
+            --soft: #f1f6fb;
+            --error: #a52828;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--background); color: var(--navy); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5; }
+        button, input { font: inherit; }
+        button, input, a { -webkit-tap-highlight-color: transparent; }
+        :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+        .skip-link { position: absolute; left: 20px; top: -80px; padding: 12px 20px; background: var(--surface); z-index: 2; color: var(--navy); }
+        .skip-link:focus { top: 12px; }
+        .site-header { background: var(--surface); border-bottom: 4px solid var(--blue); }
+        .brand { max-width: 1440px; margin: auto; padding: 15px 32px; display: flex; align-items: center; gap: 22px; }
+        .brand-name { font-size: 36px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.2; }
+        .brand-description { border-left: 1px solid #b9c8dc; padding-left: 22px; font-size: 20px; }
+        main { max-width: 1440px; margin: auto; padding: 26px 32px 20px; }
+        .intro { margin-bottom: 24px; }
+        h1 { font-size: clamp(26px, 2.7vw, 38px); line-height: 1.2; letter-spacing: -.8px; margin: 0 0 6px; }
+        .intro p { margin: 0; color: var(--muted); font-size: 18px; }
+        .panels { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
+        .card { min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px; box-shadow: 0 2px 4px #102b5306; }
+        .card-wide { grid-column: 1 / -1; }
+        .card-header { display: flex; align-items: center; gap: 18px; margin-bottom: 20px; }
+        .icon-circle { display: grid; place-items: center; width: 60px; height: 60px; flex: 0 0 60px; background: #e8f2fa; color: #10559b; border-radius: 50%; }
+        .icon-circle svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+        h2 { margin: 0 0 4px; font-size: 21px; line-height: 1.3; letter-spacing: -.4px; }
+        .card-header p { margin: 0; color: var(--muted); }
+        form { margin: 0 0 18px; }
+        label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 7px; }
+        .search-row { display: flex; align-items: stretch; gap: 14px; }
+        input { min-width: 0; width: 100%; min-height: 46px; border: 1px solid #b7c6d9; border-radius: 6px; padding: 10px 14px; color: var(--navy); background: var(--surface); }
+        input::placeholder { color: #62738a; opacity: 1; }
+        input:hover { border-color: #7a94b6; }
+        button { flex-shrink: 0; min-height: 46px; border: 1px solid transparent; border-radius: 6px; padding: 10px 26px; background: var(--blue); color: #fff; font-weight: 650; cursor: pointer; transition: background 150ms ease; }
+        button:hover { background: var(--blue-hover); }
+        button:active { background: #093e87; }
+        button:disabled { background: #526c90; cursor: wait; }
+        .button-full { width: 100%; }
+        .resultado { min-height: 135px; }
+        .result-box { border-radius: 7px; padding: 18px 22px; background: var(--soft); }
+        .result-title { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+        dl { margin: 0; display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 9px 16px; }
+        dt { color: var(--muted); }
+        dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+        .price { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .empty { display: grid; place-content: center; text-align: center; min-height: 135px; padding: 22px; border: 1px dashed var(--border); border-radius: 7px; color: var(--muted); background: #fafcfe; }
+        .empty p { margin: 0; }
+        .empty strong { display: block; color: var(--navy); font-size: 15px; margin-bottom: 3px; }
+        .error { border: 1px solid #edc8c8; border-radius: 6px; padding: 16px; color: var(--error); background: #fff5f5; margin: 0; }
+        .table-scroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 7px; }
+        table { width: 100%; border-collapse: collapse; font-size: 15px; }
+        caption { text-align: left; padding: 12px 18px; color: var(--muted); background: #fafcfe; }
+        th, td { text-align: left; padding: 13px 18px; border-bottom: 1px solid #e0e8f1; vertical-align: middle; }
+        th { background: #edf3f9; font-weight: 650; white-space: nowrap; }
+        tbody tr:last-child td { border-bottom: 0; }
+        .highlight { background: var(--green-bg); }
+        .highlight .price { color: var(--green); font-weight: 750; }
+        .price-cell { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+        .badge { display: inline-block; white-space: nowrap; font-size: 12px; font-weight: 650; background: var(--green); color: #fff; border-radius: 5px; padding: 3px 9px; }
+        .site-footer { padding-top: 18px; color: var(--muted); font-size: 13px; }
+        .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+        @media (max-width: 900px) {
+            .brand { padding: 16px 22px; }
+            main { padding: 24px 22px; }
+            .panels { grid-template-columns: minmax(0, 1fr); }
+            .card { padding: 20px; }
+        }
+        @media (max-width: 520px) {
+            .brand { gap: 15px; padding: 14px 16px; }
+            .brand-name { font-size: 30px; }
+            .brand-description { font-size: 17px; padding-left: 15px; }
+            main { padding: 24px 16px; }
+            .intro p { font-size: 16px; }
+            .card { padding: 18px; }
+            .card-header { align-items: flex-start; gap: 12px; }
+            .icon-circle { width: 44px; height: 44px; flex-basis: 44px; }
+            .icon-circle svg { width: 25px; height: 25px; }
+            h2 { font-size: 19px; }
+            .card-header p { font-size: 14px; }
+            .search-row { flex-direction: column; gap: 10px; }
+            dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+            dd { margin-bottom: 10px; }
+            dd:last-child { margin-bottom: 0; }
+            .result-box { padding: 16px; }
+            th, td { padding: 12px; }
+            .price-table { min-width: 660px; }
+            .supplier-table { min-width: 460px; }
+        }
+        @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+    </style>
+</head>
+<body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+<header class="site-header">
+    <div class="brand"><span class="brand-name">SIS</span><span class="brand-description">Abastecimiento</span></div>
+</header>
+<main id="contenido">
+    <div class="intro">
+        <h1>Consultas de abastecimiento</h1>
+        <p>Información de medicamentos y proveedores para el personal de salud del SIS.</p>
+    </div>
+    <div class="panels">
+        <section class="card" aria-labelledby="titulo-mayor">
+            <div class="card-header">
+                <span class="icon-circle" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 15 6-6M5.2 18.8a5 5 0 0 1 0-7.1l6.5-6.5a5 5 0 0 1 7.1 7.1l-6.5 6.5a5 5 0 0 1-7.1 0Z"/></svg></span>
+                <div><h2 id="titulo-mayor">Medicamento de mayor costo</h2><p>Consulta el medicamento con el precio más alto registrado.</p></div>
+            </div>
+            <form id="form-mayor"><button class="button-full" type="submit" aria-controls="res-mayor">Consultar</button></form>
+            <div id="res-mayor" class="resultado" aria-live="polite" aria-atomic="true">
+                <div class="empty"><p><strong>Consulta el mayor precio registrado</strong>El medicamento y su proveedor aparecerán aquí.</p></div>
+            </div>
+        </section>
+        <section class="card" aria-labelledby="titulo-contacto">
+            <div class="card-header">
+                <span class="icon-circle" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 21h18M8 21V3h8v18M3 21V9h5m8 12V7h5v14M11 7h2m-2 4h2m-2 4h2m-2 6v-2h2v2"/></svg></span>
+                <div><h2 id="titulo-contacto">Buscar proveedor</h2><p>Consulta información de un proveedor por su nombre o RUC.</p></div>
+            </div>
+            <form id="form-contacto">
+                <label for="q-contacto">Nombre o RUC</label>
+                <div class="search-row"><input id="q-contacto" type="search" placeholder="Ej. Laboratorios Andinos o 20200023456"><button type="submit" aria-controls="res-contacto">Buscar</button></div>
+            </form>
+            <div id="res-contacto" class="resultado" aria-live="polite" aria-atomic="true">
+                <div class="empty"><p><strong>Encuentra a tu proveedor</strong>Deja el campo vacío para consultar todos.</p></div>
+            </div>
+        </section>
+        <section class="card card-wide" aria-labelledby="titulo-precio">
+            <div class="card-header">
+                <span class="icon-circle" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5"/></svg></span>
+                <div><h2 id="titulo-precio">Mejor precio por medicamento</h2><p>Compara precios de un medicamento entre diferentes proveedores.</p></div>
+            </div>
+            <form id="form-precio">
+                <label for="q-precio">Medicamento</label>
+                <div class="search-row"><input id="q-precio" type="search" placeholder="Ej. Paracetamol 500 mg" required><button type="submit" aria-controls="res-precio">Comparar</button></div>
+            </form>
+            <p id="estado-precio" class="visually-hidden" role="status"></p>
+            <div id="res-precio" class="resultado">
+                <div class="empty"><p><strong>Compara antes de elegir</strong>Busca un medicamento para ver sus precios de menor a mayor.</p></div>
+            </div>
+        </section>
+    </div>
+    <footer class="site-footer">Seguro Integral de Salud · Portal de consulta de medicamentos y proveedores · <a href="/api">Probar API CRUD</a></footer>
+</main>
+<script>
+    const soles = n => 'S/ ' + Number(n).toFixed(2);
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+    const vacio = msg => `<div class="empty"><p>${esc(msg)}</p></div>`;
+
+    async function consumir(url) {
+        const r = await fetch(url);
+        if (r.status === 404) return null;
+        if (!r.ok) throw new Error('No se pudo completar la consulta. Inténtalo nuevamente.');
+        return r.json();
+    }
+
+    function onSubmit(id, resultId, handler) {
+        const form = document.getElementById(id);
+        const result = document.getElementById(resultId);
+        const status = id === 'form-precio' ? document.getElementById('estado-precio') : null;
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const button = form.querySelector('button');
+            if (button.disabled) return;
+            const label = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Consultando…';
+            result.setAttribute('aria-busy', 'true');
+            if (status) status.textContent = 'Consultando precios…';
+            try {
+                await handler(result);
+                if (status) status.textContent = result.querySelector('caption')?.textContent || result.textContent;
+            } catch (err) {
+                result.innerHTML = '<p class="error">No se pudo completar la consulta. Comprueba la conexión e inténtalo nuevamente.</p>';
+                if (status) status.textContent = result.textContent;
+            } finally {
+                result.setAttribute('aria-busy', 'false');
+                button.disabled = false;
+                button.textContent = label;
+            }
+        });
+    }
+
+    const medicineInput = document.getElementById('q-precio');
+    medicineInput.addEventListener('input', () => medicineInput.setCustomValidity(medicineInput.value.trim() ? '' : 'Escribe el nombre de un medicamento.'));
+
+    onSubmit('form-mayor', 'res-mayor', async result => {
+        const a = await consumir('/api/servicios/articulo-mayor-costo');
+        result.innerHTML = !a ? vacio('No hay artículos registrados.') : `
+            <div class="result-box"><p class="result-title">Resultado</p><dl>
+                <dt>Medicamento</dt><dd>${esc(a.descripcion)}</dd>
+                <dt>Precio unitario</dt><dd class="price">${soles(a.precio)}</dd>
+                <dt>Presentación</dt><dd>${esc(a.unidadMedida.descripcion)}</dd>
+                <dt>Proveedor</dt><dd>${esc(a.proveedor.nombre)}</dd>
+                <dt>RUC</dt><dd>${esc(a.proveedor.ruc)}</dd>
+            </dl></div>`;
+    });
+
+    onSubmit('form-contacto', 'res-contacto', async result => {
+        const q = document.getElementById('q-contacto').value.trim();
+        const lista = await consumir('/api/servicios/proveedores/buscar?q=' + encodeURIComponent(q)) || [];
+        if (lista.length === 1) {
+            const p = lista[0];
+            result.innerHTML = `<div class="result-box"><p class="result-title">Proveedor encontrado</p><dl>
+                <dt>Proveedor</dt><dd>${esc(p.nombre)}</dd>
+                <dt>RUC</dt><dd>${esc(p.ruc)}</dd>
+                <dt>Medicamentos</dt><dd>${esc(p.medicamentosQueAbastece)}</dd>
+            </dl></div>`;
+            return;
+        }
+        result.innerHTML = !lista.length ? vacio('No se encontraron proveedores. Prueba con otro nombre o RUC.') : `
+            <div class="table-scroll" role="region" aria-label="Proveedores encontrados" tabindex="0"><table class="supplier-table">
+                <caption>${lista.length} ${lista.length === 1 ? 'proveedor encontrado' : 'proveedores encontrados'}</caption>
+                <thead><tr><th scope="col">Proveedor</th><th scope="col">RUC</th><th scope="col">Medicamentos</th></tr></thead>
+                <tbody>${lista.map(p => `<tr><td>${esc(p.nombre)}</td><td>${esc(p.ruc)}</td><td>${esc(p.medicamentosQueAbastece)}</td></tr>`).join('')}</tbody>
+            </table></div>`;
+    });
+
+    onSubmit('form-precio', 'res-precio', async result => {
+        const q = medicineInput.value.trim();
+        const lista = await consumir('/api/servicios/articulos/mejor-precio?q=' + encodeURIComponent(q)) || [];
+        result.innerHTML = !lista.length ? vacio('No se encontró el medicamento. Prueba con otro nombre.') : `
+            <div class="table-scroll" role="region" aria-label="Comparación de precios" tabindex="0"><table class="price-table">
+                <caption>${lista.length} ${lista.length === 1 ? 'resultado' : 'resultados'} para «${esc(q)}» · De menor a mayor precio</caption>
+                <thead><tr><th scope="col">Medicamento</th><th scope="col">Proveedor</th><th scope="col">Presentación</th><th scope="col">Precio unitario</th></tr></thead>
+                <tbody>${lista.map(a => `<tr class="${Number(a.precio) === Number(lista[0].precio) ? 'highlight' : ''}">
+                    <td>${esc(a.descripcion)}</td><td>${esc(a.proveedor.nombre)}</td><td>${esc(a.unidadMedida.descripcion)}</td>
+                    <td><div class="price-cell"><span class="price">${soles(a.precio)}</span>${Number(a.precio) === Number(lista[0].precio) ? '<span class="badge">Menor precio</span>' : ''}</div></td>
+                </tr>`).join('')}</tbody>
+            </table></div>`;
+    });
+</script>
+</body>
+</html>
