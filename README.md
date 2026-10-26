@@ -25,8 +25,19 @@ Espera a que PostgreSQL indique que acepta conexiones antes de iniciar Spring Bo
 | Medicamentos en JSON | http://localhost:8080/api/articulos |
 | Proveedores en JSON | http://localhost:8080/api/proveedores |
 | Unidades de medida en JSON | http://localhost:8080/api/unidades-medida |
+| Tipos de artículo en JSON | http://localhost:8080/api/tipos-articulo |
 
-El esquema se crea con [schema.sql](src/main/resources/schema.sql) y los registros iniciales se cargan con [data.sql](src/main/resources/data.sql). En una base nueva se cargan **50 artículos, 10 proveedores, 8 unidades de medida y 8 tipos de artículo**. Los artículos incluyen medicamentos e insumos médicos.
+El esquema se crea con [schema.sql](src/main/resources/schema.sql) y los registros iniciales se cargan con [data.sql](src/main/resources/data.sql). En una base nueva se cargan **50 artículos, 10 proveedores, 8 unidades de medida y 9 tipos de artículo (incluido «Sin clasificar»)**. Los artículos incluyen medicamentos e insumos médicos.
+
+## Agregar medicamentos a un proveedor
+
+En el portal principal, busca al proveedor por nombre o RUC y pulsa **Ver y agregar medicamentos**. Verás su lista y un formulario para registrar el medicamento con ID nuevo, nombre, precio, presentación y tipo. El proveedor se toma de la selección; no necesitas escribir su ID.
+
+Al guardar se confirma la operación y se actualizan la lista y el contador del proveedor. El contador representa registros de artículos asociados, no cantidades de stock. Si un medicamento lo ofrecen dos proveedores, cada oferta se registra con su propio ID y precio; crear una oferta no mueve la de otro proveedor. Los IDs repetidos se rechazan sin sobrescribir datos.
+
+`GET /api/proveedores/{id}/articulos` devuelve solo los artículos de ese proveedor (lista vacía si no tiene ninguno y 404 si no existe). El formulario reutiliza `POST /api/articulos` y sus validaciones. Cambiar `idProveedor` por PUT reasigna un artículo existente; los contadores se recalculan desde la base al consultar. Un proveedor con artículos asociados no puede eliminarse.
+
+Si el guardado se confirma pero falla la recarga de la lista, la página indica **Medicamento guardado** y permite actualizar sin volver a crearlo. Un fallo de conexión durante el POST requiere consultar la lista antes de reintentar, porque la respuesta podría haberse perdido.
 
 ## Probar el CRUD desde el navegador
 
@@ -77,7 +88,8 @@ await api('articulos', 'POST', {
   descripcion: 'Medicamento Demo',
   precio: 2.50,
   idUnidad: 1,
-  idProveedor: 101
+  idProveedor: 101,
+  idTipo: 9
 });
 ```
 
@@ -106,7 +118,8 @@ await api('articulos/101', 'PUT', {
   descripcion: 'Medicamento Demo Actualizado',
   precio: 3.00,
   idUnidad: 1,
-  idProveedor: 101
+  idProveedor: 101,
+  idTipo: 9
 });
 ```
 
@@ -121,13 +134,13 @@ await api('proveedores/101', 'DELETE');
 
 Ambas peticiones deben devolver **204**. La función de ayuda contempla que esta respuesta no tiene JSON. Una consulta posterior a esos IDs devuelve **404**.
 
-También está disponible la [guía con llamadas fetch directas, sin función de ayuda](docs/GUIA-CONSOLA-CRUD.md).
+También está disponible la [guía completa de consola](docs/GUIA-CONSOLA-CRUD.md), con preparación de IDs libres, CRUD de ambos recursos, relaciones, contadores y casos de error con sus respuestas esperadas.
 
 ### Validaciones y errores
 
 | Estado | Motivo |
 |---|---|
-| 400 | Campos inválidos, JSON incorrecto, ID ausente al crear o unidad/proveedor inexistente. |
+| 400 | Campos inválidos, JSON incorrecto, ID ausente al crear o unidad/proveedor/tipo inexistente. |
 | 404 | El registro que se quiere consultar, actualizar o eliminar no existe. |
 | 409 | ID o RUC duplicado, o intento de eliminar un proveedor con medicamentos asociados. |
 
@@ -143,7 +156,7 @@ El RUC debe tener exactamente once dígitos y ser único. El precio admite cero 
 | [dto](src/main/java/pe/unp/abastecimiento/dto) | Validación de los datos recibidos. |
 | [ApiExceptionHandler.java](src/main/java/pe/unp/abastecimiento/controller/ApiExceptionHandler.java) | Respuestas JSON de error. |
 
-Los controladores identifican las operaciones con comentarios **CREATE, READ, UPDATE y DELETE**. El flujo es: **petición HTTP → controlador → servicio → JPA/PostgreSQL → respuesta JSON**.
+En los controladores, `crear` corresponde a **CREATE**, `listar` y `obtener` a **READ**, `actualizar` a **UPDATE** y `eliminar` a **DELETE**. Las anotaciones indican el método HTTP. El flujo es: **petición HTTP → controlador → servicio → JPA/PostgreSQL → respuesta JSON**.
 
 ## Diagrama de la base de datos
 
@@ -153,6 +166,7 @@ El sistema usa cuatro tablas. El diagrama representa las columnas y relaciones d
 erDiagram
     UNIDAD_MEDIDA ||--o{ ARTICULO : mide
     PROVEEDOR ||--o{ ARTICULO : suministra
+    TIPO_ARTICULO ||--o{ ARTICULO : clasifica
 
     TIPO_ARTICULO {
         int id_tipo PK
@@ -173,12 +187,23 @@ erDiagram
         decimal precio
         int unidad_medida FK
         int id_proveedor FK
+        int id_tipo FK
     }
 ```
 
 **PK**: clave primaria. **FK**: clave foránea. **UK**: valor único.
 
-Cada artículo pertenece a una unidad de medida y a un proveedor. Una unidad o proveedor puede estar asociado a cero o muchos artículos. `tipo_articulo` existe como catálogo independiente: actualmente `articulo` no tiene una clave foránea hacia esa tabla.
+Cada artículo pertenece a una unidad de medida, un proveedor y un tipo. Cada catálogo puede estar asociado a cero o muchos artículos. `articulo.id_tipo` es una clave foránea obligatoria hacia `tipo_articulo.id_tipo`.
+
+La migración `src/main/resources/migrations/001-articulo-tipo.sql` se ejecuta automáticamente al iniciar Spring Boot. Agrega la relación a bases existentes y asigna el tipo **9 · Sin clasificar** a los artículos que no tenían tipo; conserva los demás datos y las clasificaciones existentes. No infiere categorías clínicas. Los datos iniciales también usan ese tipo hasta clasificarlos mediante PUT.
+
+POST y PUT de artículos requieren `idTipo`; GET devuelve el objeto `tipoArticulo`. Para ver la relación en pgAdmin, actualiza el esquema y vuelve a generar **Tools → ERD For Database**. Para aplicar solo la migración sin volver a cargar los datos iniciales:
+
+```powershell
+Get-Content -Raw src/main/resources/migrations/001-articulo-tipo.sql | docker compose exec -T postgres psql -U postgres -d abastecimiento -v ON_ERROR_STOP=1 --single-transaction
+```
+
+Para revertir esta unidad, restaura el código anterior y elimina la columna `articulo.id_tipo`; esa reversión descarta las clasificaciones y debe hacerse solo si ya no se necesitan. La relación, DTO, servicio, catálogo, formulario, migración, datos iniciales y pruebas se revierten juntos.
 
 ### Visualizar las tablas en PostgreSQL
 
@@ -229,4 +254,8 @@ Con el servidor iniciado, ejecutar las pruebas HTTP (requiere Python 3):
 python scripts/test_crud.py
 ```
 
-El script comprueba las páginas del portal y `/api`, más **38 respuestas HTTP** de los CRUD, validaciones y consultas originales. Crea sus propios registros y los elimina al finalizar. La explicación detallada de la demostración está en [docs/CRUD.md](docs/CRUD.md).
+Para verificar listados por proveedor, contadores, duplicados, ofertas del mismo medicamento con proveedores distintos, reasignación y eliminación, ejecuta `python scripts/test_proveedor_medicamentos.py` (32 comprobaciones HTTP, más limpieza de registros propios).
+
+Para comprobar conservación de datos, clave foránea, obligatoriedad e idempotencia de la migración en un esquema temporal (con ROLLBACK al terminar), ejecuta `python scripts/test_tipo_migration.py`.
+
+El script `test_crud.py` comprueba las páginas del portal y `/api`, más **45 respuestas HTTP** de los CRUD, validaciones y consultas originales. Crea sus propios registros y los elimina al finalizar. La explicación detallada de la demostración está en [docs/CRUD.md](docs/CRUD.md).

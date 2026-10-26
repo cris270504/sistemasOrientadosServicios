@@ -21,7 +21,7 @@
         }
         * { box-sizing: border-box; }
         body { margin: 0; background: var(--background); color: var(--navy); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5; }
-        button, input { font: inherit; }
+        button, input, select { font: inherit; }
         button, input, a { -webkit-tap-highlight-color: transparent; }
         :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
         .skip-link { position: absolute; left: 20px; top: -80px; padding: 12px 20px; background: var(--surface); z-index: 2; color: var(--navy); }
@@ -75,6 +75,23 @@
         .price-cell { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
         .badge { display: inline-block; white-space: nowrap; font-size: 12px; font-weight: 650; background: var(--green); color: #fff; border-radius: 5px; padding: 3px 9px; }
         .site-footer { padding-top: 18px; color: var(--muted); font-size: 13px; }
+        [hidden] { display: none !important; }
+        .supplier-action { margin-top: 16px; }
+        .supplier-table button { white-space: normal; min-width: 150px; }
+        .management-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; margin-top: 20px; }
+        .medicine-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+        .medicine-fields legend { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
+        .medicine-fields label { margin-top: 12px; }
+        .medicine-fields select { width: 100%; min-height: 46px; padding: 10px 14px; border: 1px solid #b7c6d9; border-radius: 6px; color: var(--navy); background: var(--surface); }
+        .medicine-fields button { margin-top: 18px; }
+        .management-hint { color: var(--muted); margin: 8px 0 0; }
+        .management-status { margin: 16px 0; }
+        .management-status.ok { color: var(--green); }
+        .medicine-list { margin: 0; padding: 0; list-style: none; }
+        .medicine-list li { padding: 14px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+        .medicine-list strong { display: block; }
+        .medicine-list span { display: block; color: var(--muted); }
+        @media (max-width: 900px) { .management-grid { grid-template-columns: minmax(0, 1fr); } }
         .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
         @media (max-width: 900px) {
             .brand { padding: 16px 22px; }
@@ -140,6 +157,33 @@
                 <div class="empty"><p><strong>Encuentra a tu proveedor</strong>Deja el campo vacío para consultar todos.</p></div>
             </div>
         </section>
+        <section id="gestion-proveedor" class="card card-wide" aria-labelledby="titulo-gestion" hidden>
+            <h2 id="titulo-gestion" tabindex="-1">Medicamentos del proveedor</h2>
+            <p id="proveedor-elegido" class="management-hint"></p>
+            <p class="management-hint">Cada registro tiene su propio precio y proveedor. Para ofrecer el mismo medicamento con otro proveedor, crea otro registro con un ID nuevo.</p>
+            <p id="estado-gestion" class="management-status" role="status"></p>
+            <button id="reintentar-gestion" type="button" hidden>Reintentar carga</button>
+            <div class="management-grid">
+                <div id="lista-proveedor" aria-live="polite"></div>
+                <form id="form-agregar-medicamento" hidden>
+                    <fieldset id="campos-medicamento" class="medicine-fields">
+                        <legend>Agregar medicamento a este proveedor</legend>
+                        <label for="med-id">ID nuevo del medicamento</label>
+                        <input id="med-id" type="number" min="1" max="2147483647" step="1" required>
+                        <label for="med-descripcion">Medicamento</label>
+                        <input id="med-descripcion" maxlength="150" required placeholder="Ej. Paracetamol 500 mg">
+                        <label for="med-precio">Precio unitario (S/)</label>
+                        <input id="med-precio" type="number" min="0" max="9999999.99" step="0.01" required>
+                        <label for="med-unidad">Presentación</label>
+                        <select id="med-unidad" required></select>
+                        <label for="med-tipo">Tipo de artículo</label>
+                        <select id="med-tipo" required></select>
+                        <button id="guardar-medicamento" type="submit">Guardar medicamento</button>
+                    </fieldset>
+                    <p id="error-medicamento" class="error" role="alert" tabindex="-1" hidden></p>
+                </form>
+            </div>
+        </section>
         <section class="card card-wide" aria-labelledby="titulo-precio">
             <div class="card-header">
                 <span class="icon-circle" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5"/></svg></span>
@@ -157,7 +201,7 @@
     </div>
     <footer class="site-footer">Seguro Integral de Salud · Portal de consulta de medicamentos y proveedores · <a href="/api">Probar API CRUD</a></footer>
 </main>
-<script>
+<script th:inline="none">
     const soles = n => 'S/ ' + Number(n).toFixed(2);
     const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
     const vacio = msg => `<div class="empty"><p>${esc(msg)}</p></div>`;
@@ -211,24 +255,144 @@
             </dl></div>`;
     });
 
+    let proveedoresEncontrados = new Map();
+    let proveedorElegido = null;
+    let cargaGestion = 0;
+    let guardandoMedicamento = false;
+
+    const accionProveedor = p => `<button class="supplier-action" type="button" data-proveedor="${p.idProveedor}">Ver y agregar medicamentos</button>`;
+    const contadorProveedor = p => `<span data-contador-proveedor="${p.idProveedor}">${esc(p.medicamentosQueAbastece)}</span>`;
+
     onSubmit('form-contacto', 'res-contacto', async result => {
         const q = document.getElementById('q-contacto').value.trim();
         const lista = await consumir('/api/servicios/proveedores/buscar?q=' + encodeURIComponent(q)) || [];
+        proveedoresEncontrados = new Map(lista.map(p => [p.idProveedor, p]));
         if (lista.length === 1) {
             const p = lista[0];
             result.innerHTML = `<div class="result-box"><p class="result-title">Proveedor encontrado</p><dl>
                 <dt>Proveedor</dt><dd>${esc(p.nombre)}</dd>
                 <dt>RUC</dt><dd>${esc(p.ruc)}</dd>
-                <dt>Medicamentos</dt><dd>${esc(p.medicamentosQueAbastece)}</dd>
-            </dl></div>`;
+                <dt>Medicamentos</dt><dd>${contadorProveedor(p)}</dd>
+            </dl>${accionProveedor(p)}</div>`;
             return;
         }
         result.innerHTML = !lista.length ? vacio('No se encontraron proveedores. Prueba con otro nombre o RUC.') : `
             <div class="table-scroll" role="region" aria-label="Proveedores encontrados" tabindex="0"><table class="supplier-table">
                 <caption>${lista.length} ${lista.length === 1 ? 'proveedor encontrado' : 'proveedores encontrados'}</caption>
-                <thead><tr><th scope="col">Proveedor</th><th scope="col">RUC</th><th scope="col">Medicamentos</th></tr></thead>
-                <tbody>${lista.map(p => `<tr><td>${esc(p.nombre)}</td><td>${esc(p.ruc)}</td><td>${esc(p.medicamentosQueAbastece)}</td></tr>`).join('')}</tbody>
+                <thead><tr><th scope="col">Proveedor</th><th scope="col">RUC</th><th scope="col">Medicamentos</th><th scope="col">Acciones</th></tr></thead>
+                <tbody>${lista.map(p => `<tr><td>${esc(p.nombre)}</td><td>${esc(p.ruc)}</td><td>${contadorProveedor(p)}</td><td>${accionProveedor(p)}</td></tr>`).join('')}</tbody>
             </table></div>`;
+    });
+
+    async function consultarGestion(url) {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'No se pudieron cargar los datos. Reintenta la carga.');
+        return data;
+    }
+
+    function mostrarMedicamentos(lista, proveedor) {
+        document.getElementById('lista-proveedor').innerHTML = `<h3>${lista.length} ${lista.length === 1 ? 'medicamento registrado' : 'medicamentos registrados'}</h3>` +
+            (!lista.length ? vacio('Este proveedor todavía no tiene medicamentos. Agrega el primero con el formulario.') :
+            `<ul class="medicine-list">${lista.map(a => `<li><strong>${esc(a.descripcion)}</strong><span>ID ${a.idArticulo} · ${esc(a.unidadMedida.descripcion)} · ${esc(a.tipoArticulo.descripcion)}</span><b class="price">${soles(a.precio)}</b></li>`).join('')}</ul>`);
+        proveedor.medicamentosQueAbastece = lista.length;
+        document.querySelectorAll(`[data-contador-proveedor="${proveedor.idProveedor}"]`).forEach(el => el.textContent = lista.length);
+    }
+
+    async function abrirProveedor(proveedor) {
+        if (guardandoMedicamento) return;
+        const carga = ++cargaGestion;
+        proveedorElegido = proveedor;
+        document.getElementById('gestion-proveedor').hidden = false;
+        document.getElementById('titulo-gestion').textContent = 'Medicamentos de ' + proveedor.nombre;
+        document.getElementById('titulo-gestion').focus();
+        document.getElementById('proveedor-elegido').textContent = `Proveedor: ${proveedor.nombre} · RUC ${proveedor.ruc}`;
+        const estado = document.getElementById('estado-gestion');
+        estado.className = 'management-status';
+        estado.textContent = 'Cargando medicamentos y catálogos…';
+        document.getElementById('lista-proveedor').replaceChildren();
+        document.getElementById('form-agregar-medicamento').hidden = true;
+        document.getElementById('error-medicamento').hidden = true;
+        document.getElementById('reintentar-gestion').hidden = true;
+        try {
+            const [lista, unidades, tipos] = await Promise.all([
+                consultarGestion(`/api/proveedores/${proveedor.idProveedor}/articulos`),
+                consultarGestion('/api/unidades-medida'), consultarGestion('/api/tipos-articulo')
+            ]);
+            if (carga !== cargaGestion) return;
+            if (!unidades.length || !tipos.length) throw new Error('Faltan unidades o tipos de artículo. Completa los catálogos y reintenta.');
+            mostrarMedicamentos(lista, proveedor);
+            for (const [id, items, clave] of [['med-unidad', unidades, 'idUnidad'], ['med-tipo', tipos, 'idTipo']]) {
+                const select = document.getElementById(id);
+                select.replaceChildren(new Option('Selecciona una opción', ''), ...items.map(item => new Option(item.descripcion, item[clave])));
+            }
+            document.getElementById('form-agregar-medicamento').reset();
+            document.getElementById('form-agregar-medicamento').hidden = false;
+            estado.textContent = 'El medicamento se guardará con el proveedor indicado arriba.';
+        } catch (err) {
+            if (carga !== cargaGestion) return;
+            estado.className = 'management-status error';
+            estado.textContent = err.message;
+            document.getElementById('reintentar-gestion').hidden = false;
+        }
+    }
+
+    document.getElementById('res-contacto').addEventListener('click', e => {
+        const button = e.target.closest('button[data-proveedor]');
+        if (button && !guardandoMedicamento) {
+            const proveedor = proveedoresEncontrados.get(Number(button.dataset.proveedor));
+            if (proveedor) abrirProveedor(proveedor);
+        }
+    });
+    document.getElementById('reintentar-gestion').addEventListener('click', () => abrirProveedor(proveedorElegido));
+    document.getElementById('med-descripcion').addEventListener('input', e => e.target.setCustomValidity(e.target.value.trim() ? '' : 'Escribe el nombre del medicamento.'));
+
+    document.getElementById('form-agregar-medicamento').addEventListener('submit', async e => {
+        e.preventDefault();
+        if (guardandoMedicamento || !proveedorElegido) return;
+        const proveedor = proveedorElegido;
+        const datos = {
+            idArticulo: Number(document.getElementById('med-id').value),
+            descripcion: document.getElementById('med-descripcion').value.trim(),
+            precio: Number(document.getElementById('med-precio').value),
+            idUnidad: Number(document.getElementById('med-unidad').value),
+            idTipo: Number(document.getElementById('med-tipo').value), idProveedor: proveedor.idProveedor
+        };
+        const error = document.getElementById('error-medicamento');
+        const estado = document.getElementById('estado-gestion');
+        const button = document.getElementById('guardar-medicamento');
+        error.hidden = true;
+        guardandoMedicamento = true;
+        document.getElementById('campos-medicamento').disabled = true;
+        button.textContent = 'Guardando…';
+        estado.textContent = 'Guardando medicamento…';
+        let guardado = false;
+        try {
+            const response = await fetch('/api/articulos', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(datos)});
+            const data = await response.json();
+            if (!response.ok) throw new Error([data.detail, ...Object.values(data.campos || {})].filter(Boolean).join(' ') || 'No se pudo guardar el medicamento.');
+            guardado = true;
+            e.target.reset();
+            estado.className = 'management-status ok';
+            estado.textContent = `Medicamento guardado para ${proveedor.nombre}.`;
+            const lista = await consultarGestion(`/api/proveedores/${proveedor.idProveedor}/articulos`);
+            mostrarMedicamentos(lista, proveedor);
+        } catch (err) {
+            if (guardado) {
+                estado.textContent = 'Medicamento guardado. No se pudo actualizar la lista; pulsa «Actualizar medicamentos». No vuelvas a crearlo.';
+                document.getElementById('reintentar-gestion').textContent = 'Actualizar medicamentos';
+                document.getElementById('reintentar-gestion').hidden = false;
+            } else {
+                estado.textContent = '';
+                error.textContent = err instanceof TypeError ? 'No se pudo confirmar el guardado. Consulta la lista antes de reintentar.' : err.message;
+                error.hidden = false;
+                error.focus();
+            }
+        } finally {
+            guardandoMedicamento = false;
+            document.getElementById('campos-medicamento').disabled = false;
+            button.textContent = 'Guardar medicamento';
+        }
     });
 
     onSubmit('form-precio', 'res-precio', async result => {

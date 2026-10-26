@@ -35,7 +35,8 @@ INSERT INTO proveedor (id_proveedor, ruc, nombre) VALUES
  (10, '20110001234', 'Suministros Hospitalarios Tallan SAC')
 ON CONFLICT (id_proveedor) DO NOTHING;
 
-INSERT INTO articulo (id_articulo, descripcion, precio, unidad_medida, id_proveedor) VALUES
+INSERT INTO articulo (id_articulo, descripcion, precio, unidad_medida, id_proveedor, id_tipo)
+SELECT semillas.*, 9 FROM (VALUES
  (1,  'Paracetamol 500 mg',                     0.10, 1, 1),
  (2,  'Paracetamol 500 mg',                     0.12, 1, 2),
  (3,  'Paracetamol 500 mg',                     0.09, 1, 3),
@@ -86,4 +87,5 @@ INSERT INTO articulo (id_articulo, descripcion, precio, unidad_medida, id_provee
  (48, 'Oxitocina 10 UI/ml',                     2.30, 4, 5),
  (49, 'Enoxaparina 40 mg',                     28.40, 4, 9),
  (50, 'Factor VIII antihemofilico 500 UI',    950.00, 8, 9)
+) AS semillas(id_articulo, descripcion, precio, unidad_medida, id_proveedor)
 ON CONFLICT (id_articulo) DO NOTHING;

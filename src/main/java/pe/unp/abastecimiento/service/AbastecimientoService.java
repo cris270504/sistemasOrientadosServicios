@@ -22,12 +22,10 @@ public class AbastecimientoService {
         this.proveedorRepository = proveedorRepository;
     }
 
-    /** Servicio 1: medicamento de mayor costo (mayor impacto en el presupuesto SIS). */
     public Optional<Articulo> medicamentoMayorCosto() {
         return articuloRepository.findFirstByOrderByPrecioDesc();
     }
 
-    /** Servicio 2: buscar el contacto de un proveedor por nombre o RUC. */
     public List<ContactoProveedor> buscarContactoProveedor(String criterio) {
         String q = criterio == null ? "" : criterio.trim();
         return proveedorRepository.findByNombreContainingIgnoreCaseOrRucContainingOrderByNombreAsc(q, q).stream()
@@ -35,7 +33,6 @@ public class AbastecimientoService {
                 .toList();
     }
 
-    /** Servicio 3: comparar el precio de un medicamento entre proveedores (mas barato primero). */
     public List<Articulo> mejorPrecio(String medicamento) {
         String q = medicamento == null ? "" : medicamento.trim();
         return articuloRepository.findByDescripcionContainingIgnoreCaseOrderByPrecioAsc(q);

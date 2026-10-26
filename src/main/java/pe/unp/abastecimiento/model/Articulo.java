@@ -25,18 +25,23 @@ public class Articulo {
     @JoinColumn(name = "id_proveedor", nullable = false)
     private Proveedor proveedor;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_tipo", nullable = false)
+    private TipoArticulo tipoArticulo;
+
     protected Articulo() { }
 
-    public Articulo(Integer idArticulo, String descripcion, BigDecimal precio, UnidadMedida unidadMedida, Proveedor proveedor) {
+    public Articulo(Integer idArticulo, String descripcion, BigDecimal precio, UnidadMedida unidadMedida, Proveedor proveedor, TipoArticulo tipoArticulo) {
         this.idArticulo = idArticulo;
-        actualizar(descripcion, precio, unidadMedida, proveedor);
+        actualizar(descripcion, precio, unidadMedida, proveedor, tipoArticulo);
     }
 
-    public void actualizar(String descripcion, BigDecimal precio, UnidadMedida unidadMedida, Proveedor proveedor) {
+    public void actualizar(String descripcion, BigDecimal precio, UnidadMedida unidadMedida, Proveedor proveedor, TipoArticulo tipoArticulo) {
         this.descripcion = descripcion;
         this.precio = precio;
         this.unidadMedida = unidadMedida;
         this.proveedor = proveedor;
+        this.tipoArticulo = tipoArticulo;
     }
 
     public Integer getIdArticulo() { return idArticulo; }
@@ -44,4 +49,5 @@ public class Articulo {
     public BigDecimal getPrecio() { return precio; }
     public UnidadMedida getUnidadMedida() { return unidadMedida; }
     public Proveedor getProveedor() { return proveedor; }
+    public TipoArticulo getTipoArticulo() { return tipoArticulo; }
 }

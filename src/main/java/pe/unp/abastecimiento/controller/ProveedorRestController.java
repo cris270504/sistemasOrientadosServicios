@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pe.unp.abastecimiento.dto.ProveedorRequest;
 import pe.unp.abastecimiento.model.Proveedor;
+import pe.unp.abastecimiento.model.Articulo;
 import pe.unp.abastecimiento.service.CrudService;
 import java.util.List;
 
@@ -28,6 +29,11 @@ public class ProveedorRestController {
     @GetMapping("/{id}")
     public Proveedor obtener(@PathVariable Integer id) {
         return service.obtenerProveedor(id);
+    }
+
+    @GetMapping("/{id}/articulos")
+    public List<Articulo> medicamentos(@PathVariable Integer id) {
+        return service.listarArticulosProveedor(id);
     }
 
     /** CREATE: POST /api/proveedores — crea y devuelve HTTP 201 con Location. */

@@ -13,4 +13,6 @@ public interface ArticuloRepository extends JpaRepository<Articulo, Integer> {
     List<Articulo> findByDescripcionContainingIgnoreCaseOrderByPrecioAsc(String descripcion);
 
     long countByProveedorIdProveedor(Integer idProveedor);
+
+    List<Articulo> findByProveedorIdProveedorOrderByDescripcionAscIdArticuloAsc(Integer idProveedor);
 }

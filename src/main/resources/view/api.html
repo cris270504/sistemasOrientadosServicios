@@ -66,6 +66,7 @@
         <a href="/api/articulos" target="_blank" rel="noopener">Ver medicamentos en JSON</a>
         <a href="/api/proveedores" target="_blank" rel="noopener">Ver proveedores en JSON</a>
         <a href="/api/unidades-medida" target="_blank" rel="noopener">Ver unidades de medida</a>
+        <a href="/api/tipos-articulo" target="_blank" rel="noopener">Ver tipos de artículo</a>
     </div>
     <div class="layout">
         <section class="card" aria-labelledby="titulo-peticion">
@@ -88,7 +89,8 @@
                         <div class="field"><label for="precio">Precio unitario (S/)</label><input id="precio" type="number" min="0" max="9999999.99" step="0.01" required placeholder="0.00"></div>
                         <div class="field"><label for="idUnidad">ID de unidad de medida</label><input id="idUnidad" type="number" min="1" max="2147483647" step="1" required placeholder="Ej. 1 (Tableta)"></div>
                     </div>
-                    <div class="field"><label for="idProveedor">ID del proveedor</label><input id="idProveedor" type="number" min="1" max="2147483647" step="1" required placeholder="Ej. 1"><p class="hint">La unidad y el proveedor deben existir. Puedes consultar sus IDs en los enlaces superiores.</p></div>
+                    <div class="field"><label for="idProveedor">ID del proveedor</label><input id="idProveedor" type="number" min="1" max="2147483647" step="1" required placeholder="Ej. 1"></div>
+                    <div class="field"><label for="idTipo">ID del tipo de artículo</label><input id="idTipo" type="number" min="1" max="2147483647" step="1" required placeholder="Ej. 1 (Analgésico)"><p class="hint">La unidad, el proveedor y el tipo deben existir. Consulta sus IDs en los enlaces superiores; el tipo 9 corresponde a «Sin clasificar».</p></div>
                 </fieldset>
                 <fieldset id="datos-proveedor" hidden disabled>
                     <legend>Datos del proveedor</legend>
@@ -125,7 +127,7 @@
 <script th:inline="none">
     const $ = id => document.getElementById(id);
     const methods = {listar: 'GET', consultar: 'GET', crear: 'POST', actualizar: 'PUT', eliminar: 'DELETE'};
-    const fields = ['descripcion', 'precio', 'idUnidad', 'idProveedor', 'nombre', 'ruc'];
+    const fields = ['descripcion', 'precio', 'idUnidad', 'idProveedor', 'idTipo', 'nombre', 'ruc'];
 
     function clearErrors() {
         $('errores').hidden = true;
@@ -190,7 +192,7 @@
 
     function requestBody() {
         let body = $('recurso').value === 'articulos'
-            ? {descripcion: $('descripcion').value.trim(), precio: Number($('precio').value), idUnidad: Number($('idUnidad').value), idProveedor: Number($('idProveedor').value)}
+            ? {descripcion: $('descripcion').value.trim(), precio: Number($('precio').value), idUnidad: Number($('idUnidad').value), idProveedor: Number($('idProveedor').value), idTipo: Number($('idTipo').value)}
             : {ruc: $('ruc').value, nombre: $('nombre').value.trim()};
         if ($('operacion').value === 'crear') body[$('recurso').value === 'articulos' ? 'idArticulo' : 'idProveedor'] = Number($('idRegistro').value);
         return body;
@@ -233,6 +235,7 @@
                     $('precio').value = data.precio;
                     $('idUnidad').value = data.unidadMedida.idUnidad;
                     $('idProveedor').value = data.proveedor.idProveedor;
+                    $('idTipo').value = data.tipoArticulo.idTipo;
                 } else { $('nombre').value = data.nombre; $('ruc').value = data.ruc; }
             }
         } catch (err) {

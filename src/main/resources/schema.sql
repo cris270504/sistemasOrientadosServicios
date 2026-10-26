@@ -21,5 +21,6 @@ CREATE TABLE IF NOT EXISTS articulo (
     descripcion   VARCHAR(150)  NOT NULL,
     precio        DECIMAL(9,2)  NOT NULL CHECK (precio >= 0),
     unidad_medida INTEGER       NOT NULL REFERENCES unidad_medida(id_unidad),
-    id_proveedor  INTEGER       NOT NULL REFERENCES proveedor(id_proveedor)
+    id_proveedor  INTEGER       NOT NULL REFERENCES proveedor(id_proveedor),
+    id_tipo       INTEGER       NOT NULL CONSTRAINT fk_articulo_tipo REFERENCES tipo_articulo(id_tipo)
 );

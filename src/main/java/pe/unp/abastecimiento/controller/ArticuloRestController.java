@@ -18,19 +18,16 @@ public class ArticuloRestController {
         this.service = service;
     }
 
-    /** READ: GET /api/articulos — lista todos los medicamentos. */
     @GetMapping
     public List<Articulo> listar() {
         return service.listarArticulos();
     }
 
-    /** READ: GET /api/articulos/{id} — consulta un medicamento. */
     @GetMapping("/{id}")
     public Articulo obtener(@PathVariable Integer id) {
         return service.obtenerArticulo(id);
     }
 
-    /** CREATE: POST /api/articulos — crea y devuelve HTTP 201 con Location. */
     @PostMapping
     public ResponseEntity<Articulo> crear(@Valid @RequestBody ArticuloRequest datos) {
         Articulo creado = service.crearArticulo(datos);
@@ -38,13 +35,11 @@ public class ArticuloRestController {
         return ResponseEntity.created(location).body(creado);
     }
 
-    /** UPDATE: PUT /api/articulos/{id} — reemplaza los datos editables. */
     @PutMapping("/{id}")
     public Articulo actualizar(@PathVariable Integer id, @Valid @RequestBody ArticuloRequest datos) {
         return service.actualizarArticulo(id, datos);
     }
 
-    /** DELETE: DELETE /api/articulos/{id} — elimina y devuelve HTTP 204. */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Integer id) {
         service.eliminarArticulo(id);

@@ -62,8 +62,10 @@ def main():
     proveedor = {"idProveedor": proveedor_id, "ruc": ruc, "nombre": "Proveedor de prueba CRUD"}
     unidades, _ = expect("GET", "/api/unidades-medida", 200)
     assert unidades, "Se requiere al menos una unidad de medida."
+    tipos, _ = expect("GET", "/api/tipos-articulo", 200)
+    assert len(tipos) >= 2, "Se requieren dos tipos para probar la reclasificación."
     articulo = {"idArticulo": articulo_id, "descripcion": "Medicamento de prueba CRUD", "precio": 12.34,
-                "idUnidad": unidades[0]["idUnidad"], "idProveedor": proveedor_id}
+                "idUnidad": unidades[0]["idUnidad"], "idProveedor": proveedor_id, "idTipo": tipos[0]["idTipo"]}
     try:
         data, headers = expect("POST", "/api/proveedores", 201, proveedor)
         proveedor_created = True
@@ -83,9 +85,11 @@ def main():
         articulo_created = True
         assert headers["Location"].endswith(article_path)
         assert data["proveedor"]["idProveedor"] == proveedor_id
+        assert data["tipoArticulo"]["idTipo"] == articulo["idTipo"]
         expect("POST", "/api/articulos", 409, {**articulo, "descripcion": "No debe sobrescribir"})
         data, _ = expect("GET", article_path, 200)
         assert data["descripcion"] == articulo["descripcion"]
+        assert data["tipoArticulo"]["idTipo"] == articulo["idTipo"]
         expect("POST", "/api/articulos", 400, {**articulo, "precio": -1})
         expect("POST", "/api/articulos", 400, {**articulo, "precio": 1.234})
         expect("POST", "/api/articulos", 400, {**articulo, "descripcion": " "})
@@ -94,10 +98,19 @@ def main():
         missing_supplier = unused_id("proveedores")
         expect("PUT", article_path, 400, {**articulo, "idProveedor": missing_supplier})
         expect("PUT", article_path, 400, {**articulo, "idUnidad": 2_000_000_000})
+        expect("PUT", article_path, 400, {k: v for k, v in articulo.items() if k != "idTipo"})
+        expect("PUT", article_path, 400, {**articulo, "idTipo": None})
+        expect("PUT", article_path, 400, {**articulo, "idTipo": 0})
+        expect("PUT", article_path, 400, {**articulo, "idTipo": 2_000_000_000})
+        data, _ = expect("GET", article_path, 200)
+        assert data["tipoArticulo"]["idTipo"] == articulo["idTipo"], "Un tipo inválido no debe alterar el artículo."
         expect("PUT", article_path, 400, {**articulo, "idArticulo": articulo_id + 1})
         expect("DELETE", provider_path, 409)
-        data, _ = expect("PUT", article_path, 200, {**articulo, "descripcion": "Medicamento CRUD actualizado", "precio": 8.50})
+        data, _ = expect("PUT", article_path, 200, {**articulo, "descripcion": "Medicamento CRUD actualizado", "precio": 8.50, "idTipo": tipos[1]["idTipo"]})
         assert data["descripcion"] == "Medicamento CRUD actualizado" and data["precio"] == 8.5
+        assert data["tipoArticulo"]["idTipo"] == tipos[1]["idTipo"]
+        data, _ = expect("GET", article_path, 200)
+        assert data["tipoArticulo"]["idTipo"] == tipos[1]["idTipo"], "El nuevo tipo debe persistir."
         listed, _ = expect("GET", "/api/articulos", 200)
         assert any(a["idArticulo"] == articulo_id for a in listed)
         listed, _ = expect("GET", "/api/proveedores", 200)

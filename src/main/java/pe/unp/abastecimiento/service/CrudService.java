@@ -19,17 +19,18 @@ public class CrudService {
     private final ArticuloRepository articulos;
     private final ProveedorRepository proveedores;
     private final UnidadMedidaRepository unidades;
+    private final TipoArticuloRepository tipos;
     private final EntityManager entityManager;
 
     public CrudService(ArticuloRepository articulos, ProveedorRepository proveedores,
-                       UnidadMedidaRepository unidades, EntityManager entityManager) {
+                       UnidadMedidaRepository unidades, TipoArticuloRepository tipos, EntityManager entityManager) {
         this.articulos = articulos;
         this.proveedores = proveedores;
         this.unidades = unidades;
+        this.tipos = tipos;
         this.entityManager = entityManager;
     }
 
-    // READ: listar todos y consultar por ID.
     public List<Articulo> listarArticulos() {
         return articulos.findAll(Sort.by("idArticulo"));
     }
@@ -39,7 +40,11 @@ public class CrudService {
         return articulos.findById(id).orElseThrow(() -> error(HttpStatus.NOT_FOUND, "Medicamento no encontrado."));
     }
 
-    // CREATE: persist inserta un registro nuevo; nunca sobrescribe un ID existente.
+    public List<Articulo> listarArticulosProveedor(Integer idProveedor) {
+        obtenerProveedor(idProveedor);
+        return articulos.findByProveedorIdProveedorOrderByDescripcionAscIdArticuloAsc(idProveedor);
+    }
+
     @Transactional
     public Articulo crearArticulo(ArticuloRequest datos) {
         validarId(datos.idArticulo());
@@ -47,23 +52,21 @@ public class CrudService {
             throw error(HttpStatus.CONFLICT, "Ya existe un medicamento con ese ID.");
         }
         Articulo articulo = new Articulo(datos.idArticulo(), datos.descripcion().trim(), datos.precio(),
-                buscarUnidad(datos.idUnidad()), buscarProveedorRelacionado(datos.idProveedor()));
+                buscarUnidad(datos.idUnidad()), buscarProveedorRelacionado(datos.idProveedor()), buscarTipo(datos.idTipo()));
         entityManager.persist(articulo);
         entityManager.flush();
         return articulo;
     }
 
-    // UPDATE: modifica el registro existente identificado por la URL.
     @Transactional
     public Articulo actualizarArticulo(Integer id, ArticuloRequest datos) {
         Articulo articulo = obtenerArticulo(id);
         validarCoincidenciaId(id, datos.idArticulo());
         articulo.actualizar(datos.descripcion().trim(), datos.precio(), buscarUnidad(datos.idUnidad()),
-                buscarProveedorRelacionado(datos.idProveedor()));
+                buscarProveedorRelacionado(datos.idProveedor()), buscarTipo(datos.idTipo()));
         return articulos.saveAndFlush(articulo);
     }
 
-    // DELETE: elimina un medicamento existente.
     @Transactional
     public void eliminarArticulo(Integer id) {
         articulos.delete(obtenerArticulo(id));
@@ -113,6 +116,14 @@ public class CrudService {
 
     public List<UnidadMedida> listarUnidades() {
         return unidades.findAll(Sort.by("idUnidad"));
+    }
+
+    public List<TipoArticulo> listarTipos() {
+        return tipos.findAll(Sort.by("idTipo"));
+    }
+
+    private TipoArticulo buscarTipo(Integer id) {
+        return tipos.findById(id).orElseThrow(() -> error(HttpStatus.BAD_REQUEST, "El tipo de artículo indicado no existe."));
     }
 
     private UnidadMedida buscarUnidad(Integer id) {
